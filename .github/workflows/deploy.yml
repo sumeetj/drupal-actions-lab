@@ -1,0 +1,115 @@
+name: Multi-Environment Drupal Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy-development:
+    if: github.ref_name == 'dev'
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Show deployment target
+        run: |
+          echo "Deploying branch ${GITHUB_REF_NAME} to development"
+          echo "Target URL: ${{ secrets.APP_URL }}"
+
+      - name: Deploy to development server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin
+            git checkout dev
+            git pull origin dev
+            if [ -f composer.json ]; then
+              composer install --no-interaction --prefer-dist
+            fi
+          EOF
+
+  deploy-staging:
+    if: github.ref_name == 'staging'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Show deployment target
+        run: |
+          echo "Deploying branch ${GITHUB_REF_NAME} to staging"
+          echo "Target URL: ${{ secrets.APP_URL }}"
+
+      - name: Deploy to staging server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin
+            git checkout staging
+            git pull origin staging
+            if [ -f composer.json ]; then
+              composer install --no-interaction --prefer-dist
+            fi
+          EOF
+
+  deploy-production:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Show deployment target
+        run: |
+          echo "Deploying branch ${GITHUB_REF_NAME} to production"
+          echo "Target URL: ${{ secrets.APP_URL }}"
+
+      - name: Deploy to production server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin
+            git checkout main
+            git pull origin main
+            if [ -f composer.json ]; then
+              composer install --no-interaction --prefer-dist
+            fi
+          EOF
