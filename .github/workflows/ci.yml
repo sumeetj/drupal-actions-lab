@@ -1,0 +1,50 @@
+name: Drupal CI
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - main
+  pull_request:
+    branches:
+      - dev
+      - staging
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Show workflow context
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "Commit: $GITHUB_SHA"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - name: Validate composer file if present
+        run: |
+          if [ -f composer.json ]; then
+            composer validate --no-check-publish
+          else
+            echo "No composer.json found - skipping composer validation"
+          fi
+
+      - name: Basic PHP lint
+        run: |
+          PHP_FILES=$(find . -path ./vendor -prune -o -name "*.php" -print)
+          if [ -z "$PHP_FILES" ]; then
+            echo "No PHP files found - skipping lint"
+          else
+            echo "$PHP_FILES" | xargs -n 1 php -l
+          fi
